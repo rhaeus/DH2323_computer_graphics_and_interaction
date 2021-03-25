@@ -107,7 +107,9 @@ void DrawStarfield()
 		int u = f * stars[s].x / stars[s].z + SCREEN_WIDTH / 2.0f;
 		int v = f * stars[s].y / stars[s].z + SCREEN_HEIGHT / 2.0f;
 
-		PutPixelSDL( screen, u, v, glm::vec3(1, 1, 1) );
+		glm::vec3 color = 0.2f * glm::vec3(1, 1, 1) / (stars[s].z * stars[s].z);
+
+		PutPixelSDL(screen, u, v, color);
 	}
 
 
