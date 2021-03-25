@@ -28,12 +28,16 @@ SDL_Surface* screen;
 // FUNCTION DECLARATIONS
 
 void Draw();
+void Interpolate(float a, float b, std::vector<float>& result);
+void TestFloatInterpolate();
 
 // --------------------------------------------------------
 // FUNCTION DEFINITIONS
 
 int main( int argc, char* argv[] )
 {
+	TestFloatInterpolate();
+	
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
 	while( NoQuitMessageSDL() )
 	{
@@ -60,4 +64,32 @@ void Draw()
 		SDL_UnlockSurface(screen);
 
 	SDL_UpdateRect( screen, 0, 0, 0, 0 );
+}
+
+void TestFloatInterpolate()
+{
+	std::vector<float> result(10);
+	Interpolate(5, 14, result);
+	for (int i = 0; i < result.size(); ++i) {
+		std::cout << result[i] << " ";
+	}
+}
+
+void Interpolate(float a, float b, std::vector<float>& result) 
+{
+	if (result.size() == 0) {
+		return;
+	}
+
+	if (result.size() == 1) {
+		// return average  between a and b
+		result[0] = (a + b) / 2.0;
+	}
+
+	int x0 = 0;
+	int x1 = result.size() - 1;
+
+	for (int i = 0; i < result.size(); ++i) {
+		result[i] = (x1 - i) / float((x1 - x0)) * a + (i - x0) / float((x1 - x0)) * b;
+	}
 }
