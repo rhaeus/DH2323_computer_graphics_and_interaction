@@ -53,14 +53,25 @@ int main( int argc, char* argv[] )
 
 void Draw()
 {
+	glm::vec3 topLeft(1,0,0); // red
+	glm::vec3 topRight(0,0,1); // blue
+	glm::vec3 bottomLeft(1,1,0); // yellow
+	glm::vec3 bottomRight(0,1,0); // green
+
+	std::vector<glm::vec3> leftSide(SCREEN_HEIGHT);
+	std::vector<glm::vec3> rightSide(SCREEN_HEIGHT);
+	Interpolate(topLeft, bottomLeft, leftSide);
+	Interpolate(topRight, bottomRight, rightSide);
+
 
 	for( int y=0; y<SCREEN_HEIGHT; ++y )
 	{
+		std::vector<glm::vec3> rowColors(SCREEN_WIDTH);
+		Interpolate(leftSide[y], rightSide[y], rowColors);
 
 		for( int x=0; x<SCREEN_WIDTH; ++x )
 		{
-			vec3 color(0,0,1);
-			PutPixelSDL( screen, x, y, color );
+			PutPixelSDL( screen, x, y, rowColors[x] );
 		}
 	}
 
