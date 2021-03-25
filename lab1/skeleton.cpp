@@ -24,11 +24,15 @@ const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 SDL_Surface* screen;
 
+const int STAR_COUNT = 1000;
+std::vector<glm::vec3> stars(STAR_COUNT);
 
 // --------------------------------------------------------
 // FUNCTION DECLARATIONS
 
-void Draw();
+void DrawInterpolation();
+void DrawStarfield();
+
 void Interpolate(float a, float b, std::vector<float>& result);
 void TestFloatInterpolate();
 
@@ -44,16 +48,46 @@ int main( int argc, char* argv[] )
 	TestFloatInterpolate();
 	TestVec3Interpolate();
 
+	// init star positions
+	for(int i = 0; i < STAR_COUNT; ++i) {
+		stars[i].x = float(rand()) / float(RAND_MAX) * 2.0 - 1.0;
+		stars[i].y = float(rand()) / float(RAND_MAX) * 2.0 - 1.0;
+		stars[i].z = float(rand()) / float(RAND_MAX);
+	}
+
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
 	while( NoQuitMessageSDL() )
 	{
-		Draw();
+		DrawStarfield();
 	}
 	SDL_SaveBMP( screen, "screenshot.bmp" );
 	return 0;
 }
 
-void Draw()
+void DrawStarfield()
+{
+	float f = SCREEN_HEIGHT / 2.0f;
+
+	SDL_FillRect(screen, 0, 0);
+
+	if( SDL_MUSTLOCK(screen) )
+		SDL_LockSurface(screen);
+
+	for (size_t s = 0; s < stars.size(); ++s) {
+		int u = f * stars[s].x / stars[s].z + SCREEN_WIDTH / 2.0f;
+		int v = f * stars[s].y / stars[s].z + SCREEN_HEIGHT / 2.0f;
+
+		PutPixelSDL( screen, u, v, glm::vec3(1, 1, 1) );
+	}
+
+
+	if( SDL_MUSTLOCK(screen) )
+		SDL_UnlockSurface(screen);
+
+	SDL_UpdateRect( screen, 0, 0, 0, 0 );
+}
+
+void DrawInterpolation()
 {
 	glm::vec3 topLeft(1,0,0); // red
 	glm::vec3 topRight(0,0,1); // blue
