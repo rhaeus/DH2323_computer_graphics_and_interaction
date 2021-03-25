@@ -16,6 +16,10 @@ const int SCREEN_HEIGHT = 500;
 SDL_Surface* screen;
 int t;
 
+std::vector<Triangle> triangles;
+float focalLength = 500.0f;
+glm::vec3 cameraPos(0, 0, -3.0f);
+
 // ----------------------------------------------------------------------------
 // STRUCTS
 struct Intersection
@@ -38,6 +42,8 @@ bool RayTriangleIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<T
 
 int main( int argc, char* argv[] )
 {
+	LoadTestModel(triangles);
+
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
 	t = SDL_GetTicks();	// Set start value for timer.
 
@@ -69,8 +75,16 @@ void Draw()
 	{
 		for( int x=0; x<SCREEN_WIDTH; ++x )
 		{
-			vec3 color( 1, 0.5, 0.5 );
-			PutPixelSDL( screen, x, y, color );
+			glm::vec3 dir(x - SCREEN_WIDTH / 2.0f, y - SCREEN_HEIGHT / 2.0f, focalLength);
+			dir = glm::normalize(dir);
+
+			Intersection inter;
+
+			if (ClosestIntersection(cameraPos, dir, triangles, inter)) {
+				PutPixelSDL( screen, x, y, triangles[inter.triangleIndex].color);
+			} else {
+				PutPixelSDL( screen, x, y, glm::vec3(0, 0, 0) );
+			}
 		}
 	}
 
@@ -96,7 +110,7 @@ bool RayTriangleIntersection(glm::vec3 start, glm::vec3 dir, const Triangle& tri
 	float u = x.y;
 	float v = x.z;
 
-	bool intersect = u > 0 && v > 0 && (u + v) < 1 && t >= 0;
+	bool intersect = u >= 0 && v >= 0 && (u + v) <= 1 && t >= 0;
 
 	if (intersect) {
 		intersection.distance = t;
@@ -125,7 +139,6 @@ bool ClosestIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Trian
 	}
 
 	// find closest intersection
-	// float closestDist = std::numeric_limits<float>::max();
 	closestIntersection = allIntersections[0];
 
 	for (int i = 0; i < allIntersections.size(); ++i) {
