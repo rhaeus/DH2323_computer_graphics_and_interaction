@@ -24,6 +24,7 @@ const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 SDL_Surface* screen;
 
+
 // --------------------------------------------------------
 // FUNCTION DECLARATIONS
 
@@ -36,6 +37,7 @@ void TestVec3Interpolate();
 
 // --------------------------------------------------------
 // FUNCTION DEFINITIONS
+
 
 int main( int argc, char* argv[] )
 {
@@ -63,6 +65,8 @@ void Draw()
 	Interpolate(topLeft, bottomLeft, leftSide);
 	Interpolate(topRight, bottomRight, rightSide);
 
+	if( SDL_MUSTLOCK(screen) )
+		SDL_LockSurface(screen);
 
 	for( int y=0; y<SCREEN_HEIGHT; ++y )
 	{
