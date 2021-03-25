@@ -27,6 +27,9 @@ SDL_Surface* screen;
 const int STAR_COUNT = 1000;
 std::vector<glm::vec3> stars(STAR_COUNT);
 
+int t;
+const float VELOCITY = 5.0f; //in m/s
+
 // --------------------------------------------------------
 // FUNCTION DECLARATIONS
 
@@ -38,6 +41,8 @@ void TestFloatInterpolate();
 
 void Interpolate(glm::vec3 a, glm::vec3 b, std::vector<glm::vec3>& result);
 void TestVec3Interpolate();
+
+void Update();
 
 // --------------------------------------------------------
 // FUNCTION DEFINITIONS
@@ -56,12 +61,37 @@ int main( int argc, char* argv[] )
 	}
 
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
+
+	t = SDL_GetTicks();
+
 	while( NoQuitMessageSDL() )
 	{
+		Update();
 		DrawStarfield();
 	}
 	SDL_SaveBMP( screen, "screenshot.bmp" );
 	return 0;
+}
+
+void Update() 
+{
+	int t2 = SDL_GetTicks();
+	float dt = float(t2 - t); //ms
+
+	for (int s = 0; s < stars.size(); ++s) {
+		// update stars
+		stars[s].z -= VELOCITY * dt / 1000.0f; //use dt in seconds, velocity is in m/s
+
+		// wrap stars 
+		if (stars[s].z <= 0) {
+			stars[s].z =+ 1;
+		}
+
+		if (stars[s].z > 1) {
+			stars[s].z -= 1;
+		}
+	}
+	t = t2;
 }
 
 void DrawStarfield()
