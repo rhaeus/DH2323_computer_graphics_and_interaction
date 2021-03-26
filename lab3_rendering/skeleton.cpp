@@ -65,6 +65,12 @@ void Update()
 	const float camera_delta = 0.005;
 
 	Uint8* keystate = SDL_GetKeyState(0);
+	int dx;
+	int dy;
+	SDL_GetRelativeMouseState(&dx, &dy);
+	yaw += dx * 0.001f;
+	pitch += dy * 0.001f;
+
 	if( keystate[SDLK_UP] )
 	{
 		// Move camera forward
