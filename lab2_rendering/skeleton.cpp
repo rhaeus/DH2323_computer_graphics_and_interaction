@@ -11,8 +11,8 @@ using glm::mat3;
 // ----------------------------------------------------------------------------
 // GLOBAL VARIABLES
 
-const int SCREEN_WIDTH = 100;
-const int SCREEN_HEIGHT = 100;
+const int SCREEN_WIDTH = 500;
+const int SCREEN_HEIGHT = 500;
 SDL_Surface* screen;
 int t;
 
@@ -135,7 +135,8 @@ void Draw()
 
 			if (ClosestIntersection(cameraPos, dir, triangles, inter)) {
 				// glm::vec3 color = triangles[inter.triangleIndex].color;
-				glm::vec3 color = DirectLight(inter);
+				glm::vec3 D = DirectLight(inter);
+				glm::vec3 color = D * triangles[inter.triangleIndex].color;
 				PutPixelSDL( screen, x, y, color);
 			} else {
 				PutPixelSDL( screen, x, y, glm::vec3(0, 0, 0) );
