@@ -44,7 +44,8 @@ struct Intersection
 void Update();
 void Draw();
 
-bool ClosestIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Triangle>& triangles, Intersection& closestIntersection);
+// bool ClosestIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Triangle>& triangles, Intersection& closestIntersection);
+bool ClosestIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Triangle>& triangles, Intersection& closestIntersection, int ignoreIndex = -1);
 bool RayTriangleIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Triangle>& triangles, Intersection& intersection);
 
 glm::vec3 DirectLight(const Intersection& i);
@@ -166,7 +167,7 @@ bool RayTriangleIntersection(glm::vec3 start, glm::vec3 dir, const Triangle& tri
 	float u = x.y;
 	float v = x.z;
 
-	bool intersect = u >= 0 && v >= 0 && (u + v) <= 1 && t >= 0;
+	bool intersect = u >= 0 && v >= 0 && (u + v) <= 1 && t > 0;
 
 	if (intersect) {
 		intersection.distance = t;
@@ -178,14 +179,16 @@ bool RayTriangleIntersection(glm::vec3 start, glm::vec3 dir, const Triangle& tri
 	return false;
 }
 
-bool ClosestIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Triangle>& triangles, Intersection& closestIntersection) 
+bool ClosestIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Triangle>& triangles, Intersection& closestIntersection, int ignoreIndex) 
 {
 	std::vector<Intersection> allIntersections;
 
 	for (int i = 0; i < triangles.size(); ++i) {
 		Intersection intersection;
 		if (RayTriangleIntersection(start, dir, triangles[i], i, intersection)) {
-			allIntersections.push_back(intersection);
+			if (intersection.triangleIndex != ignoreIndex) {
+				allIntersections.push_back(intersection);
+			}
 		}
 	}
 
@@ -210,6 +213,19 @@ glm::vec3 DirectLight(const Intersection& i)
 {
 	glm::vec3 triangleLight = lightPos - i.position;
 	float distToLightSquared = triangleLight.x * triangleLight.x + triangleLight.y * triangleLight.y + triangleLight.z * triangleLight.z;
+	// float distToLight = glm::sqrt(distToLightSquared);
+
+	// cast shadow ray
+	Intersection inter;
+	if (ClosestIntersection(i.position, glm::normalize(triangleLight), triangles, inter, i.triangleIndex)) {
+		// potential shadow
+		float distToClosestInter = glm::distance(i.position, inter.position);
+		float distToLight = glm::distance(lightPos, i.position);
+		if (distToLight >= distToClosestInter) {
+			// we are in the shadow
+			return glm::vec3(0, 0, 0);
+		}
+	}
 
 	glm::vec3 B = lightColor / float(4.0f * M_PI * distToLightSquared);
 
