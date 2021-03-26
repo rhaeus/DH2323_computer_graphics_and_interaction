@@ -35,9 +35,13 @@ void VertexShader(const glm::vec3& v, glm::ivec2& p);
 void Interpolate(glm::ivec2 a, glm::ivec2 b, std::vector<glm::ivec2>& result);
 void DrawLineSDL(SDL_Surface* surface, glm::ivec2 a, glm::ivec2 b, glm::vec3 color);
 void DrawPolygonEdges(const std::vector<glm::vec3>& vertices);
+void ComputePolygonRows(const std::vector<glm::ivec2>& vertexPixels, std::vector<glm::ivec2>& leftPixels, std::vector<glm::ivec2>& rightPixels);
+void TestComputePolygonRows();
 
 int main( int argc, char* argv[] )
 {
+	TestComputePolygonRows();
+	return 0;
 	LoadTestModel( triangles );
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
 	t = SDL_GetTicks();	// Set start value for timer.
@@ -65,11 +69,11 @@ void Update()
 	const float camera_delta = 0.005;
 
 	Uint8* keystate = SDL_GetKeyState(0);
-	int dx;
-	int dy;
-	SDL_GetRelativeMouseState(&dx, &dy);
-	yaw += dx * 0.001f;
-	pitch += dy * 0.001f;
+	// int dx;
+	// int dy;
+	// SDL_GetRelativeMouseState(&dx, &dy);
+	// yaw += dx * 0.001f;
+	// pitch += dy * 0.001f;
 
 	if( keystate[SDLK_UP] )
 	{
@@ -187,5 +191,81 @@ void DrawPolygonEdges(const std::vector<glm::vec3>& vertices) {
 		int j = (i+1) % V; // next vertex
 		glm::vec3 color(1, 1, 1);
 		DrawLineSDL(screen, projectedVertices[i], projectedVertices[j], color);
+	}
+}
+
+void ComputePolygonRows(const std::vector<glm::ivec2>& vertexPixels, std::vector<glm::ivec2>& leftPixels, std::vector<glm::ivec2>& rightPixels) {
+	// 1. Find max and min y-value of the polygon
+	// and compute  the number or rows it occupies.
+	float min_y = vertexPixels[0].y;
+	float max_y = vertexPixels[0].y;
+	for (int i = 0; i < vertexPixels.size(); ++i) {
+		if (vertexPixels[i].y > max_y) {
+			max_y = vertexPixels[i].y;
+		}
+
+		if (vertexPixels[i].y < min_y) {
+			min_y = vertexPixels[i].y;
+		}
+	}
+	int rows = max_y - min_y + 1;
+
+	// 2. Resize leftPixels and rightPixels
+	// so that they have an element for each row.
+	leftPixels.resize(rows);
+	rightPixels.resize(rows);
+
+	// 3. Initialize the x-coordinates in leftPixels
+	// to some really large value and the x-coordinates 
+	// in rightPixels to some really small value
+	for (int i = 0; i < rows; ++i) {
+		leftPixels[i].x = +std::numeric_limits<int>::max();
+		rightPixels[i].x = -std::numeric_limits<int>::max();
+	}
+
+	// 4. Loop through all edges of the polygon and use
+	// linear interpolation to find the x-coordinate for
+	// each row it occupies. Update the corresponding
+	// values in rightPixels and leftPixels
+	int V = vertexPixels.size();
+	for (int i = 0; i < V; ++i) {
+		int j = (i+1) % V; // next vertex
+
+		glm::ivec2 delta = glm::abs(vertexPixels[i] - vertexPixels[j]);
+		int pixels = glm::max(delta.x, delta.y) + 1;
+		std::vector<glm::ivec2> line(pixels);
+		Interpolate(vertexPixels[i], vertexPixels[j], line);
+		for (int i = 0; i < line.size(); ++i) {
+			int r = line[i].y - min_y;
+			if (line[i].x < leftPixels[r].x) {
+				leftPixels[r].x = line[i].x;
+				leftPixels[r].y = line[i].y;
+			}
+
+			if (line[i].x > rightPixels[r].x) {
+				rightPixels[r].x = line[i].x;
+				rightPixels[r].y = line[i].y;
+			}
+		}
+
+	}
+}
+
+void TestComputePolygonRows() {
+	std::vector<glm::ivec2> vertexPixels(3);
+	vertexPixels[0] = glm::ivec2(10, 5);
+	vertexPixels[1] = glm::ivec2(5, 10);
+	vertexPixels[2] = glm::ivec2(15, 15);
+	std::vector<glm::ivec2> leftPixels;
+	std::vector<glm::ivec2> rightPixels;
+	ComputePolygonRows(vertexPixels, leftPixels, rightPixels);
+
+	for (int row = 0; row < leftPixels.size(); ++row) {
+		std::cout << "Start: ("
+		<< leftPixels[row].x << ","
+		<< leftPixels[row].y << "). "
+		<< "End: ("
+		<< rightPixels[row].x << ","
+		<< rightPixels[row].y << "). " << std::endl;
 	}
 }
