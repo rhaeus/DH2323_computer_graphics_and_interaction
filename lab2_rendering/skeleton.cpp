@@ -11,8 +11,8 @@ using glm::mat3;
 // ----------------------------------------------------------------------------
 // GLOBAL VARIABLES
 
-const int SCREEN_WIDTH = 100;
-const int SCREEN_HEIGHT = 100;
+const int SCREEN_WIDTH = 500;
+const int SCREEN_HEIGHT = 500;
 SDL_Surface* screen;
 int t;
 
@@ -25,6 +25,9 @@ glm::vec3 cameraPos(0, 0, -(2.0f * focalLength / SCREEN_HEIGHT) - 1.0f);
 
 glm::mat3 R;
 float yaw = 0.0f; // rotation angle aroung y axis in rad
+
+glm::vec3 lightPos(0, -0.5f, -0.7f);
+glm::vec3 lightColor = 14.0f * glm::vec3(1, 1, 1); // power P, energy per time unit in W = J/s
 
 // ----------------------------------------------------------------------------
 // STRUCTS
@@ -44,6 +47,7 @@ void Draw();
 bool ClosestIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Triangle>& triangles, Intersection& closestIntersection);
 bool RayTriangleIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Triangle>& triangles, Intersection& intersection);
 
+glm::vec3 DirectLight(const Intersection& i);
 
 
 int main( int argc, char* argv[] )
@@ -113,7 +117,9 @@ void Draw()
 			Intersection inter;
 
 			if (ClosestIntersection(cameraPos, dir, triangles, inter)) {
-				PutPixelSDL( screen, x, y, triangles[inter.triangleIndex].color);
+				// glm::vec3 color = triangles[inter.triangleIndex].color;
+				glm::vec3 color = DirectLight(inter);
+				PutPixelSDL( screen, x, y, color);
 			} else {
 				PutPixelSDL( screen, x, y, glm::vec3(0, 0, 0) );
 			}
@@ -180,4 +186,16 @@ bool ClosestIntersection(glm::vec3 start, glm::vec3 dir, const std::vector<Trian
 	}
 
 	return true;
+}
+
+glm::vec3 DirectLight(const Intersection& i)
+{
+	glm::vec3 triangleLight = lightPos - i.position;
+	float distToLightSquared = triangleLight.x * triangleLight.x + triangleLight.y * triangleLight.y + triangleLight.z * triangleLight.z;
+
+	glm::vec3 B = lightColor / float(4.0f * M_PI * distToLightSquared);
+
+	glm::vec3 D = B * glm::max(glm::dot(glm::normalize(lightPos - i.position), glm::normalize(triangles[i.triangleIndex].normal)), 0.0f);
+
+	return D;
 }
