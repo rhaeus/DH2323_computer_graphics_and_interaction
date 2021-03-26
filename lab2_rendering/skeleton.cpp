@@ -23,6 +23,9 @@ std::vector<Triangle> triangles;
 float focalLength = 2.0f * SCREEN_HEIGHT / 2.0f;
 glm::vec3 cameraPos(0, 0, -(2.0f * focalLength / SCREEN_HEIGHT) - 1.0f);
 
+glm::mat3 R;
+float yaw = 0.0f; // rotation angle aroung y axis in rad
+
 // ----------------------------------------------------------------------------
 // STRUCTS
 struct Intersection
@@ -83,14 +86,16 @@ void Update()
 	}
 	if( keystate[SDLK_LEFT] )
 	{
-	// Move camera to the left
-		cameraPos.x -= 0.1;
+	// rotate camera to the left
+		yaw -= 0.05;
 	}
 	if( keystate[SDLK_RIGHT] )
 	{
 	// Move camera to the right
-		cameraPos.x += 0.1;
+		yaw += 0.05;
 	}
+
+	R = mat3(glm::cos(yaw), 0, glm::sin(yaw), 0, 1, 0, -glm::sin(yaw), 0, glm::cos(yaw));
 }
 
 void Draw()
@@ -123,9 +128,9 @@ void Draw()
 
 bool RayTriangleIntersection(glm::vec3 start, glm::vec3 dir, const Triangle& triangle, int triangleIndex, Intersection& intersection)
 {
-	const glm::vec3& v0 = triangle.v0;
-	const glm::vec3& v1 = triangle.v1;
-	const glm::vec3& v2 = triangle.v2;
+	const glm::vec3& v0 = R * triangle.v0;
+	const glm::vec3& v1 = R * triangle.v1;
+	const glm::vec3& v2 = R * triangle.v2;
 
 	const glm::vec3 e1 = v1 - v0;
 	const glm::vec3 e2 = v2 - v0;
