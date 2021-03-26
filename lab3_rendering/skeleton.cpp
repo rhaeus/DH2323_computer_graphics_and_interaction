@@ -23,6 +23,7 @@ glm::vec3 cameraPos(0, 0, -3.001);
 
 glm::mat3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
 float yaw = 0; // rotation angle around y axis
+float pitch = 0; // rotation angle around x axis
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -59,29 +60,33 @@ void Update()
 	t = t2;
 	cout << "Render time: " << dt << " ms." << endl;
 
+	const float yaw_delta = 0.001;
+	const float pitch_delta = 0.001;
+	const float camera_delta = 0.005;
+
 	Uint8* keystate = SDL_GetKeyState(0);
 	if( keystate[SDLK_UP] )
 	{
 		// Move camera forward
-		cameraPos.z += 0.01;
+		cameraPos.z += camera_delta;
 	}
 	if( keystate[SDLK_DOWN] )
 	{
 	// Move camera backward
-		cameraPos.z -= 0.01;
+		cameraPos.z -= camera_delta;
 	}
 	if( keystate[SDLK_LEFT] )
 	{
 	// rotate camera to the left
-		yaw -= 0.01;
+		yaw -= yaw_delta;
 	}
 	if( keystate[SDLK_RIGHT] )
 	{
 	// Move camera to the right
-		yaw += 0.01;
+		yaw += yaw_delta;
 	}
 
-	R = mat3(glm::cos(yaw), 0, glm::sin(yaw), 0, 1, 0, -glm::sin(yaw), 0, glm::cos(yaw));
+	glm::mat3 R_y = mat3(glm::cos(yaw), 0, glm::sin(yaw), 0, 1, 0, -glm::sin(yaw), 0, glm::cos(yaw));
 
 	if( keystate[SDLK_RSHIFT] )
 		;
@@ -90,22 +95,26 @@ void Update()
 		;
 
 	if( keystate[SDLK_w] )
-		;
+		cameraPos.z += camera_delta;
 
 	if( keystate[SDLK_s] )
-		;
+		cameraPos.z -= camera_delta;
 
 	if( keystate[SDLK_d] )
-		;
+		yaw -= yaw_delta;
 
 	if( keystate[SDLK_a] )
-		;
+		yaw += yaw_delta;
 
 	if( keystate[SDLK_e] )
-		;
+		pitch -= pitch_delta;
 
 	if( keystate[SDLK_q] )
-		;
+		pitch += pitch_delta;
+
+	glm::mat3 R_x = mat3(1, 0, 0, 0, glm::cos(pitch), -glm::sin(pitch), 0, glm::sin(pitch), glm::cos(pitch));
+
+	R = R_x * R_y;
 }
 
 void Draw()
