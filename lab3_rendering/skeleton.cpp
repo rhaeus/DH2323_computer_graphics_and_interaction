@@ -18,11 +18,18 @@ SDL_Surface* screen;
 int t;
 vector<Triangle> triangles;
 
+float focalLength = SCREEN_WIDTH;
+glm::vec3 cameraPos(0, 0, -3.001);
+
+glm::mat3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
+
 // ----------------------------------------------------------------------------
 // FUNCTIONS
 
 void Update();
 void Draw();
+
+void VertexShader(const glm::vec3& v, glm::ivec2& p);
 
 int main( int argc, char* argv[] )
 {
@@ -103,10 +110,24 @@ void Draw()
 		vertices[2] = triangles[i].v2;
 
 		// Add drawing
+		for (int v = 0; v < 3; ++v) {
+			glm::ivec2 projPos;
+			VertexShader(vertices[v], projPos);
+			glm::vec3 color(1, 1, 1);
+			PutPixelSDL(screen, projPos.x, projPos.y, color);
+		}
 	}
 	
 	if ( SDL_MUSTLOCK(screen) )
 		SDL_UnlockSurface(screen);
 
 	SDL_UpdateRect( screen, 0, 0, 0, 0 );
+}
+
+void VertexShader(const glm::vec3& v, glm::ivec2& p) {
+	auto p_t = (v - cameraPos) * R;
+
+	p.x = focalLength * p_t.x / p_t.z + SCREEN_WIDTH / 2.0f;
+	p.y = focalLength * p_t.y / p_t.z + SCREEN_HEIGHT / 2.0f;
+
 }
