@@ -22,6 +22,7 @@ float focalLength = SCREEN_WIDTH;
 glm::vec3 cameraPos(0, 0, -3.001);
 
 glm::mat3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
+float yaw = 0; // rotation angle around y axis
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -59,18 +60,28 @@ void Update()
 	cout << "Render time: " << dt << " ms." << endl;
 
 	Uint8* keystate = SDL_GetKeyState(0);
-
 	if( keystate[SDLK_UP] )
-		;
-
+	{
+		// Move camera forward
+		cameraPos.z += 0.01;
+	}
 	if( keystate[SDLK_DOWN] )
-		;
-
-	if( keystate[SDLK_RIGHT] )
-		;
-
+	{
+	// Move camera backward
+		cameraPos.z -= 0.01;
+	}
 	if( keystate[SDLK_LEFT] )
-		;
+	{
+	// rotate camera to the left
+		yaw -= 0.01;
+	}
+	if( keystate[SDLK_RIGHT] )
+	{
+	// Move camera to the right
+		yaw += 0.01;
+	}
+
+	R = mat3(glm::cos(yaw), 0, glm::sin(yaw), 0, 1, 0, -glm::sin(yaw), 0, glm::cos(yaw));
 
 	if( keystate[SDLK_RSHIFT] )
 		;
