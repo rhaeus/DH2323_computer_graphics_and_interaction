@@ -30,6 +30,9 @@ void Update();
 void Draw();
 
 void VertexShader(const glm::vec3& v, glm::ivec2& p);
+void Interpolate(glm::ivec2 a, glm::ivec2 b, std::vector<glm::ivec2>& result);
+void DrawLineSDL(SDL_Surface* surface, glm::ivec2 a, glm::ivec2 b, glm::vec3 color);
+void DrawPolygonEdges(const std::vector<glm::vec3>& vertices);
 
 int main( int argc, char* argv[] )
 {
@@ -108,14 +111,7 @@ void Draw()
 		vertices[0] = triangles[i].v0;
 		vertices[1] = triangles[i].v1;
 		vertices[2] = triangles[i].v2;
-
-		// Add drawing
-		for (int v = 0; v < 3; ++v) {
-			glm::ivec2 projPos;
-			VertexShader(vertices[v], projPos);
-			glm::vec3 color(1, 1, 1);
-			PutPixelSDL(screen, projPos.x, projPos.y, color);
-		}
+		DrawPolygonEdges(vertices);
 	}
 	
 	if ( SDL_MUSTLOCK(screen) )
@@ -130,4 +126,40 @@ void VertexShader(const glm::vec3& v, glm::ivec2& p) {
 	p.x = focalLength * p_t.x / p_t.z + SCREEN_WIDTH / 2.0f;
 	p.y = focalLength * p_t.y / p_t.z + SCREEN_HEIGHT / 2.0f;
 
+}
+
+void Interpolate(glm::ivec2 a, glm::ivec2 b, std::vector<glm::ivec2>& result) {
+	int N = result.size();
+	glm::vec2 step = glm::vec2(b - a) / float(glm::max(N-1,1));
+	glm::vec2 current(a);
+	for (int i = 0; i < N; ++i) {
+		result[i] = current;
+		current += step;
+	}
+}
+
+void DrawLineSDL(SDL_Surface* surface, glm::ivec2 a, glm::ivec2 b, glm::vec3 color) {
+	glm::ivec2 delta = glm::abs(a - b);
+	int pixels = glm::max(delta.x, delta.y) + 1;
+	std::vector<glm::ivec2> line(pixels);
+	Interpolate(a, b, line);
+	for (int i = 0; i < line.size(); ++i) {
+		PutPixelSDL(surface, line[i].x, line[i].y, color);
+	}
+
+}
+
+void DrawPolygonEdges(const std::vector<glm::vec3>& vertices) {
+	int V = vertices.size();
+	// Transform vertices to 2D
+	std::vector<glm::ivec2> projectedVertices(V);
+	for (int i = 0; i < V; ++i) {
+		VertexShader(vertices[i], projectedVertices[i]);
+	}
+	// draw edges
+	for (int i = 0; i < V; ++i) {
+		int j = (i+1) % V; // next vertex
+		glm::vec3 color(1, 1, 1);
+		DrawLineSDL(screen, projectedVertices[i], projectedVertices[j], color);
+	}
 }
