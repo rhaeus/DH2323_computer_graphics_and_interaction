@@ -29,6 +29,8 @@ float yaw = 0.0f; // rotation angle aroung y axis in rad
 glm::vec3 lightPos(0, -0.5f, -0.7f);
 glm::vec3 lightColor = 14.0f * glm::vec3(1, 1, 1); // power P, energy per time unit in W = J/s
 
+glm::vec3 indirectLight = 0.5f * glm::vec3(1, 1, 1);
+
 // ----------------------------------------------------------------------------
 // STRUCTS
 struct Intersection
@@ -136,8 +138,8 @@ void Draw()
 
 			if (ClosestIntersection(cameraPos, dir, triangles, inter)) {
 				// glm::vec3 color = triangles[inter.triangleIndex].color;
-				glm::vec3 D = DirectLight(inter);
-				glm::vec3 color = D * triangles[inter.triangleIndex].color;
+				glm::vec3 T = DirectLight(inter) + indirectLight;
+				glm::vec3 color = T * triangles[inter.triangleIndex].color;
 				PutPixelSDL( screen, x, y, color);
 			} else {
 				PutPixelSDL( screen, x, y, glm::vec3(0, 0, 0) );
