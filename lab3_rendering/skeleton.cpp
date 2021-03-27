@@ -77,10 +77,14 @@ int main( int argc, char* argv[] )
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
 	t = SDL_GetTicks();	// Set start value for timer.
 
+	bool d = true;
 	while( NoQuitMessageSDL() )
 	{
-		Update();
-		Draw();
+		if (d) {
+			Update();
+			Draw();
+			// d = false;
+		}
 	}
 
 	SDL_SaveBMP( screen, "screenshot.bmp" );
@@ -93,11 +97,12 @@ void Update()
 	int t2 = SDL_GetTicks();
 	float dt = float(t2-t);
 	t = t2;
-	cout << "Render time: " << dt << " ms." << endl;
+	// cout << "Render time: " << dt << " ms." << endl;
 
-	const float yaw_delta = 0.001;
-	const float pitch_delta = 0.001;
-	const float camera_delta = 0.005;
+	const float yaw_delta = 0.01;
+	const float pitch_delta = 0.01;
+	const float camera_delta = 0.05;
+	const float light_delta = 0.05;
 
 	Uint8* keystate = SDL_GetKeyState(0);
 	// int dx;
@@ -108,32 +113,28 @@ void Update()
 
 	if( keystate[SDLK_UP] )
 	{
-		// Move camera forward
-		cameraPos.z += camera_delta;
+		lightPos.z -= light_delta;
 	}
 	if( keystate[SDLK_DOWN] )
 	{
-		// Move camera backward
-		cameraPos.z -= camera_delta;
+		lightPos.z += light_delta;
 	}
 	if( keystate[SDLK_LEFT] )
 	{
-		// rotate camera to the left
-		yaw -= yaw_delta;
+		lightPos.x -= light_delta;
 	}
 	if( keystate[SDLK_RIGHT] )
 	{
-	// Move camera to the right
-		yaw += yaw_delta;
+		lightPos.x += light_delta;
 	}
+	if( keystate[SDLK_RSHIFT] )
+		lightPos.y -= light_delta;
+
+	if( keystate[SDLK_RCTRL] )
+		lightPos.y += light_delta;
 
 	glm::mat3 R_y = mat3(glm::cos(yaw), 0, glm::sin(yaw), 0, 1, 0, -glm::sin(yaw), 0, glm::cos(yaw));
 
-	if( keystate[SDLK_RSHIFT] )
-		;
-
-	if( keystate[SDLK_RCTRL] )
-		;
 
 	if( keystate[SDLK_w] )
 		cameraPos.z += camera_delta;
@@ -311,10 +312,24 @@ void ComputePolygonRows(const std::vector<Pixel>& vertexPixels, std::vector<Pixe
 		for (int k = 0; k < line.size(); ++k) {
 			int r = line[k].position.y - min_y;
 
-			// if (r < 0 || r >= rows) {
-			// 	std::cout << "huch " << line[k].y << " " << min_y <<  std::endl;
-			// }
+			// clip triangles to screen space
+			if (line[k].position.x < 0) {
+				line[k].position.x = 0;
+			}
+			
+			if (line[k].position.x >= SCREEN_WIDTH) {
+				line[k].position.x = SCREEN_WIDTH - 1;
+			}
 
+			if (line[k].position.y < 0) {
+				line[k].position.y = 0;
+			}
+			
+			if (line[k].position.y >= SCREEN_HEIGHT) {
+				line[k].position.y = SCREEN_HEIGHT - 1;
+			}
+
+			// find left and right pixels of triangles
 			if (line[k].position.x < leftPixels[r].position.x) {
 				leftPixels[r].position.x = line[k].position.x;
 				leftPixels[r].position.y = line[k].position.y;
