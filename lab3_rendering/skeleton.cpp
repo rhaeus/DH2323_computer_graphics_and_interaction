@@ -35,6 +35,11 @@ struct Pixel
 	float zinv;
 };
 
+struct Vertex
+{
+	glm::vec3 position;
+};
+
 // ----------------------------------------------------------------------------
 // FUNCTIONS
 
@@ -43,18 +48,27 @@ void Draw();
 
 void VertexShader(const glm::vec3& v, glm::ivec2& p);
 void VertexShader(const glm::vec3& v, Pixel& p);
+void VertexShader(const Vertex& v, Pixel& p);
+
 void Interpolate(glm::ivec2 a, glm::ivec2 b, std::vector<glm::ivec2>& result);
 void Interpolate(Pixel a, Pixel b, std::vector<Pixel>& result);
+
 void DrawLineSDL(SDL_Surface* surface, glm::ivec2 a, glm::ivec2 b, glm::vec3 color);
 void DrawLineSDL(SDL_Surface* surface, Pixel a, Pixel b, glm::vec3 color);
+
 void DrawPolygonEdges(const std::vector<glm::vec3>& vertices);
+
 void ComputePolygonRows(const std::vector<glm::ivec2>& vertexPixels, std::vector<glm::ivec2>& leftPixels, std::vector<glm::ivec2>& rightPixels);
 void ComputePolygonRows(const std::vector<Pixel>& vertexPixels, std::vector<Pixel>& leftPixels, std::vector<Pixel>& rightPixels);
 void TestComputePolygonRows();
+
 void DrawPolygonRows(const std::vector<glm::ivec2>& leftPixels, const std::vector<glm::ivec2>& rightPixels);
 void DrawPolygonRows(const std::vector<Pixel>& leftPixels, const std::vector<Pixel>& rightPixels);
+
 void DrawPolygon(const std::vector<glm::vec3>& vertices);
-void DrawPolygon(const std::vector<Pixel>& vertices);
+void DrawPolygon(const std::vector<Vertex>& vertices);
+
+void PixelShader(const Pixel& p);
 
 int main( int argc, char* argv[] )
 {
@@ -159,10 +173,10 @@ void Draw()
 	for( int i=0; i<triangles.size(); ++i )
 	{
 		currentColor = triangles[i].color;
-		vector<vec3> vertices(3);
-		vertices[0] = triangles[i].v0;
-		vertices[1] = triangles[i].v1;
-		vertices[2] = triangles[i].v2;
+		std::vector<Vertex> vertices(3);
+		vertices[0].position = triangles[i].v0;
+		vertices[1].position = triangles[i].v1;
+		vertices[2].position = triangles[i].v2;
 		DrawPolygon(vertices);
 	}
 	
@@ -186,6 +200,14 @@ void VertexShader(const glm::vec3& v, Pixel& p) {
 	p.position.x = focalLength * p_t.x / p_t.z + SCREEN_WIDTH / 2.0f;
 	p.position.y = focalLength * p_t.y / p_t.z + SCREEN_HEIGHT / 2.0f;
 	p.zinv = 1.0f / p_t.z;
+}
+
+void VertexShader(const Vertex& v, Pixel& p) {
+	auto p_t = (v.position - cameraPos) * R;
+
+	p.zinv = 1.0f / p_t.z;
+	p.position.x = focalLength * p_t.x * p.zinv + SCREEN_WIDTH / 2.0f;
+	p.position.y = focalLength * p_t.y * p.zinv + SCREEN_HEIGHT / 2.0f;
 }
 
 void Interpolate(glm::ivec2 a, glm::ivec2 b, std::vector<glm::ivec2>& result) {
@@ -234,15 +256,8 @@ void DrawLineSDL(SDL_Surface* surface, Pixel a, Pixel b, glm::vec3 color) {
 	std::vector<Pixel> line(pixels);
 	Interpolate(a, b, line);
 	for (int i = 0; i < line.size(); ++i) {
-		int x = line[i].position.x;
-		int y = line[i].position.y;
-
-		if (line[i].zinv > depthBuffer[y][x]) {
-			PutPixelSDL(surface, x, y, color);
-			depthBuffer[y][x] = line[i].zinv;
-		}
+		PixelShader(line[i]);
 	}
-
 }
 
 void DrawPolygonEdges(const std::vector<glm::vec3>& vertices) {
@@ -436,30 +451,25 @@ void DrawPolygon(const std::vector<glm::vec3>& vertices) {
 	DrawPolygonRows(leftPixels, rightPixels);
 	
 }
-// void DrawPolygon(const std::vector<glm::vec3>& vertices) {
-// 	int V = vertices.size();
-// 	std::vector<glm::ivec2> vertexPixels(V);
-// 	for (int i = 0; i < V; ++i) {
-// 		VertexShader(vertices[i], vertexPixels[i]);
-// 	}
 
-// 	std::vector<glm::ivec2> leftPixels;
-// 	std::vector<glm::ivec2> rightPixels;
-// 	ComputePolygonRows(vertexPixels, leftPixels, rightPixels);
-// 	DrawPolygonRows(leftPixels, rightPixels);
-	
-// }
+void DrawPolygon(const std::vector<Vertex>& vertices) {
+	int V = vertices.size();
+	std::vector<Pixel> vertexPixels(V);
+	for (int i = 0; i < V; ++i) {
+		VertexShader(vertices[i], vertexPixels[i]);
+	}
 
-// void DrawPolygon(const std::vector<Pixel>& vertices) {
-// 	int V = vertices.size();
-// 	std::vector<Pixel> vertexPixels(V);
-// 	for (int i = 0; i < V; ++i) {
-// 		VertexShader(vertices[i], vertexPixels[i]);
-// 	}
+	std::vector<Pixel> leftPixels;
+	std::vector<Pixel> rightPixels;
+	ComputePolygonRows(vertexPixels, leftPixels, rightPixels);
+	DrawPolygonRows(leftPixels, rightPixels);
+}
 
-// 	std::vector<Pixel> leftPixels;
-// 	std::vector<Pixel> rightPixels;
-// 	ComputePolygonRows(vertexPixels, leftPixels, rightPixels);
-// 	DrawPolygonRows(leftPixels, rightPixels);
-
-// }
+void PixelShader(const Pixel& p) {
+	int x = p.position.x;
+	int y = p.position.y;
+	if (p.zinv > depthBuffer[y][x]) {
+		depthBuffer[y][x] = p.zinv;
+		PutPixelSDL(screen, x, y, currentColor);
+	}
+}
