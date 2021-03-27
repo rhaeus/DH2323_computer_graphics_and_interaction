@@ -29,15 +29,22 @@ glm::vec3 currentColor(0, 0, 0);
 
 float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 
+glm::vec3 lightPos(0, -0.5f, -0.7f);
+glm::vec3 lightPower = 1.1f * glm::vec3(1, 1, 1);
+glm::vec3 indirectLightPowerPerArea = 0.5f * glm::vec3(1, 1, 1);
+
 struct Pixel 
 {
 	glm::ivec2 position;
 	float zinv;
+	glm::vec3 illumination;
 };
 
 struct Vertex
 {
 	glm::vec3 position;
+	glm::vec3 normal;
+	glm::vec3 reflectance;
 };
 
 // ----------------------------------------------------------------------------
@@ -177,6 +184,12 @@ void Draw()
 		vertices[0].position = triangles[i].v0;
 		vertices[1].position = triangles[i].v1;
 		vertices[2].position = triangles[i].v2;
+
+		for (int j = 0; j < 3; ++j) {
+			vertices[j].normal = triangles[i].normal;
+			vertices[j].reflectance = triangles[i].color;
+		}
+
 		DrawPolygon(vertices);
 	}
 	
@@ -208,6 +221,12 @@ void VertexShader(const Vertex& v, Pixel& p) {
 	p.zinv = 1.0f / p_t.z;
 	p.position.x = focalLength * p_t.x * p.zinv + SCREEN_WIDTH / 2.0f;
 	p.position.y = focalLength * p_t.y * p.zinv + SCREEN_HEIGHT / 2.0f;
+
+	glm::vec3 r = lightPos - v.position;
+	float r_squared = r.x * r.x + r.y * r.y + r.z * r.z;
+
+	glm::vec3 D = lightPower * glm::max(glm::dot(glm::normalize(r), v.normal), 0.0f) / float(4.0f * M_PI * r_squared);
+	p.illumination = v.reflectance * (D + indirectLightPowerPerArea);
 }
 
 void Interpolate(glm::ivec2 a, glm::ivec2 b, std::vector<glm::ivec2>& result) {
@@ -225,8 +244,11 @@ void Interpolate(Pixel a, Pixel b, std::vector<Pixel>& result) {
 	int N = result.size();
 	glm::vec2 step_position = glm::vec2(b.position - a.position) / float(glm::max(N-1,1));
 	float step_z = float(b.zinv - a.zinv) / float(glm::max(N-1,1));
+	glm::vec3 step_illumination = (b.illumination - a.illumination) / float(glm::max(N-1,1));
+
 	glm::vec2 current_position(a.position);
 	float current_z = a.zinv;
+	glm::vec3 current_illumination(a.illumination);
 
 	for (int i = 0; i < N; ++i) {
 		// std::cout << current.x  << ", " << current.y << " | " << glm::round(current).x << ", " << glm::round(current).y << std::endl;
@@ -235,6 +257,9 @@ void Interpolate(Pixel a, Pixel b, std::vector<Pixel>& result) {
 
 		result[i].zinv = current_z;
 		current_z += step_z;
+
+		result[i].illumination = current_illumination;
+		current_illumination += step_illumination;
 	}
 
 }
@@ -330,12 +355,14 @@ void ComputePolygonRows(const std::vector<Pixel>& vertexPixels, std::vector<Pixe
 				leftPixels[r].position.x = line[k].position.x;
 				leftPixels[r].position.y = line[k].position.y;
 				leftPixels[r].zinv = line[k].zinv;
+				leftPixels[r].illumination = line[k].illumination;
 			}
 
 			if (line[k].position.x > rightPixels[r].position.x) {
 				rightPixels[r].position.x = line[k].position.x;
 				rightPixels[r].position.y = line[k].position.y;
 				rightPixels[r].zinv = line[k].zinv;
+				rightPixels[r].illumination = line[k].illumination;
 			}
 		}
 
@@ -470,6 +497,6 @@ void PixelShader(const Pixel& p) {
 	int y = p.position.y;
 	if (p.zinv > depthBuffer[y][x]) {
 		depthBuffer[y][x] = p.zinv;
-		PutPixelSDL(screen, x, y, currentColor);
+		PutPixelSDL(screen, x, y, p.illumination);
 	}
 }
