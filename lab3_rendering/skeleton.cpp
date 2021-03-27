@@ -25,12 +25,10 @@ glm::mat3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
 float yaw = 0; // rotation angle around y axis
 float pitch = 0; // rotation angle around x axis
 
-glm::vec3 currentColor(0, 0, 0);
-
 float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 glm::vec3 lightPos(0, -0.5f, -0.7f);
-glm::vec3 lightPower = 1.1f * glm::vec3(1, 1, 1);
+glm::vec3 lightPower = 5.1f * glm::vec3(1, 1, 1);
 glm::vec3 indirectLightPowerPerArea = 0.5f * glm::vec3(1, 1, 1);
 
 glm::vec3 currentNormal;
@@ -40,14 +38,12 @@ struct Pixel
 {
 	glm::ivec2 position;
 	float zinv;
-	glm::vec3 illumination;
+	glm::vec3 pos3d;
 };
 
 struct Vertex
 {
 	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec3 reflectance;
 };
 
 // ----------------------------------------------------------------------------
@@ -60,7 +56,7 @@ void VertexShader(const Vertex& v, Pixel& p);
 
 void Interpolate(Pixel a, Pixel b, std::vector<Pixel>& result);
 
-void DrawLineSDL(SDL_Surface* surface, Pixel a, Pixel b, glm::vec3 color);
+void DrawLineSDL(SDL_Surface* surface, Pixel a, Pixel b);
 
 void DrawPolygonEdges(const std::vector<glm::vec3>& vertices);
 
@@ -174,16 +170,13 @@ void Draw()
 	
 	for( int i=0; i<triangles.size(); ++i )
 	{
-		currentColor = triangles[i].color;
+		currentReflectance = triangles[i].color;
+		currentNormal = triangles[i].normal;
+
 		std::vector<Vertex> vertices(3);
 		vertices[0].position = triangles[i].v0;
 		vertices[1].position = triangles[i].v1;
 		vertices[2].position = triangles[i].v2;
-
-		for (int j = 0; j < 3; ++j) {
-			vertices[j].normal = triangles[i].normal;
-			vertices[j].reflectance = triangles[i].color;
-		}
 
 		DrawPolygon(vertices);
 	}
@@ -200,23 +193,18 @@ void VertexShader(const Vertex& v, Pixel& p) {
 	p.zinv = 1.0f / p_t.z;
 	p.position.x = focalLength * p_t.x * p.zinv + SCREEN_WIDTH / 2.0f;
 	p.position.y = focalLength * p_t.y * p.zinv + SCREEN_HEIGHT / 2.0f;
-
-	glm::vec3 r = lightPos - v.position;
-	float r_squared = r.x * r.x + r.y * r.y + r.z * r.z;
-
-	glm::vec3 D = lightPower * glm::max(glm::dot(glm::normalize(r), v.normal), 0.0f) / float(4.0f * M_PI * r_squared);
-	p.illumination = v.reflectance * (D + indirectLightPowerPerArea);
+	p.pos3d = v.position;
 }
 
 void Interpolate(Pixel a, Pixel b, std::vector<Pixel>& result) {
 	int N = result.size();
 	glm::vec2 step_position = glm::vec2(b.position - a.position) / float(glm::max(N-1,1));
 	float step_z = float(b.zinv - a.zinv) / float(glm::max(N-1,1));
-	glm::vec3 step_illumination = (b.illumination - a.illumination) / float(glm::max(N-1,1));
+	glm::vec3 step_pos3d = (b.pos3d - a.pos3d) / float(glm::max(N-1,1));
 
 	glm::vec2 current_position(a.position);
 	float current_z = a.zinv;
-	glm::vec3 current_illumination(a.illumination);
+	glm::vec3 current_pos3d(a.pos3d);
 
 	for (int i = 0; i < N; ++i) {
 		// std::cout << current.x  << ", " << current.y << " | " << glm::round(current).x << ", " << glm::round(current).y << std::endl;
@@ -226,13 +214,13 @@ void Interpolate(Pixel a, Pixel b, std::vector<Pixel>& result) {
 		result[i].zinv = current_z;
 		current_z += step_z;
 
-		result[i].illumination = current_illumination;
-		current_illumination += step_illumination;
+		result[i].pos3d = current_pos3d;
+		current_pos3d += step_pos3d;
 	}
 
 }
 
-void DrawLineSDL(SDL_Surface* surface, Pixel a, Pixel b, glm::vec3 color) {
+void DrawLineSDL(SDL_Surface* surface, Pixel a, Pixel b) {
 	glm::ivec2 delta = glm::abs(a.position - b.position);
 	int pixels = glm::max(delta.x, delta.y) + 1;
 	std::vector<Pixel> line(pixels);
@@ -297,14 +285,14 @@ void ComputePolygonRows(const std::vector<Pixel>& vertexPixels, std::vector<Pixe
 				leftPixels[r].position.x = line[k].position.x;
 				leftPixels[r].position.y = line[k].position.y;
 				leftPixels[r].zinv = line[k].zinv;
-				leftPixels[r].illumination = line[k].illumination;
+				leftPixels[r].pos3d = line[k].pos3d;
 			}
 
 			if (line[k].position.x > rightPixels[r].position.x) {
 				rightPixels[r].position.x = line[k].position.x;
 				rightPixels[r].position.y = line[k].position.y;
 				rightPixels[r].zinv = line[k].zinv;
-				rightPixels[r].illumination = line[k].illumination;
+				rightPixels[r].pos3d = line[k].pos3d;
 			}
 		}
 
@@ -313,7 +301,7 @@ void ComputePolygonRows(const std::vector<Pixel>& vertexPixels, std::vector<Pixe
 
 void DrawPolygonRows(const std::vector<Pixel>& leftPixels, const std::vector<Pixel>& rightPixels) {
 	for (int i = 0; i < leftPixels.size(); ++i) {
-		DrawLineSDL(screen, leftPixels[i], rightPixels[i], currentColor);
+		DrawLineSDL(screen, leftPixels[i], rightPixels[i]);
 	}
 }
 
@@ -335,6 +323,11 @@ void PixelShader(const Pixel& p) {
 	int y = p.position.y;
 	if (p.zinv > depthBuffer[y][x]) {
 		depthBuffer[y][x] = p.zinv;
-		PutPixelSDL(screen, x, y, p.illumination);
+		glm::vec3 r = lightPos - p.pos3d;
+		float r_squared = r.x * r.x + r.y * r.y + r.z * r.z;
+
+		glm::vec3 D = lightPower * glm::max(glm::dot(glm::normalize(r), currentNormal), 0.0f) / float(4.0f * M_PI * r_squared);
+		auto illumination = currentReflectance * (D + indirectLightPowerPerArea);
+		PutPixelSDL(screen, x, y, illumination);
 	}
 }
