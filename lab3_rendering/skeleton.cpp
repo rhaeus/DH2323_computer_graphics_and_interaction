@@ -55,6 +55,9 @@ void Draw();
 void VertexShader(const Vertex& v, Pixel& p);
 
 void Interpolate(Pixel a, Pixel b, std::vector<Pixel>& result);
+void Interpolate(glm::ivec2 a, glm::ivec2 b, std::vector<glm::ivec2>& result);
+void Interpolate(glm::vec3 a, glm::vec3 b, std::vector<glm::vec3>& result);
+void Interpolate(float a, float b, std::vector<float>& result);
 
 void DrawLineSDL(SDL_Surface* surface, Pixel a, Pixel b);
 
@@ -196,26 +199,57 @@ void VertexShader(const Vertex& v, Pixel& p) {
 	p.pos3d = v.position;
 }
 
+void Interpolate(glm::ivec2 a, glm::ivec2 b, std::vector<glm::ivec2>& result) {
+	int N = result.size();
+	glm::vec2 step = glm::vec2(b - a) / float(glm::max(N - 1, 1));
+	glm::vec2 current(a);
+	for (int i = 0; i < N; ++i) {
+		result[i] = glm::round(current);
+		current += step;
+	}
+}
+
+void Interpolate(glm::vec3 a, glm::vec3 b, std::vector<glm::vec3>& result) {
+	int N = result.size();
+	glm::vec3 step = glm::vec3(b - a) / float(glm::max(N - 1, 1));
+	glm::vec3 current(a);
+	for (int i = 0; i < N; ++i) {
+		result[i] = current;
+		current += step;
+	}
+}
+
+void Interpolate(float a, float b, std::vector<float>& result) {
+	int N = result.size();
+	float step = float(b - a) / float(glm::max(N - 1, 1));
+	float current(a);
+	for (int i = 0; i < N; ++i) {
+		result[i] = current;
+		current += step;
+	}
+}
+
 void Interpolate(Pixel a, Pixel b, std::vector<Pixel>& result) {
 	int N = result.size();
-	glm::vec2 step_position = glm::vec2(b.position - a.position) / float(glm::max(N-1,1));
-	float step_z = float(b.zinv - a.zinv) / float(glm::max(N-1,1));
-	glm::vec3 step_pos3d = (b.pos3d - a.pos3d) / float(glm::max(N-1,1));
 
-	glm::vec2 current_position(a.position);
-	float current_z = a.zinv;
-	glm::vec3 current_pos3d(a.pos3d);
+	// interpolate 2d position
+	std::vector<glm::ivec2> pos2d(N);
+	Interpolate(a.position, b.position, pos2d);
 
+	// interpolate 3d position
+	std::vector<glm::vec3> pos3d(N);
+	Interpolate(a.pos3d * a.zinv, b.pos3d * b.zinv, pos3d);
+
+	// interpolate z
+	std::vector<float> z(N);
+	Interpolate(a.zinv, b.zinv, z);
+
+	// combine results
 	for (int i = 0; i < N; ++i) {
-		// std::cout << current.x  << ", " << current.y << " | " << glm::round(current).x << ", " << glm::round(current).y << std::endl;
-		result[i].position = glm::round(current_position);
-		current_position += step_position;
 
-		result[i].zinv = current_z;
-		current_z += step_z;
-
-		result[i].pos3d = current_pos3d;
-		current_pos3d += step_pos3d;
+		result[i].zinv = z[i];
+		result[i].position = pos2d[i];
+		result[i].pos3d = pos3d[i] / result[i].zinv;
 	}
 
 }
