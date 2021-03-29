@@ -24,6 +24,9 @@ Vector Vector::addTo(const Vector &other) const
 {
 	//add this vector to other and return the result
 	Vector result;
+	result.x = other.x + this->x;
+	result.y = other.y + this->y;
+	result.z = other.z + this->z;
 	//your code here
 	return result;
 }
@@ -32,6 +35,9 @@ Vector Vector::subtractFrom(const Vector &other) const
 {
 	//subtract this vector from other and return the result
 	Vector result;
+	result.x = other.x - this->x;
+	result.y = other.y - this->y;
+	result.z = other.z - this->z;
 	//your code here
 	return result;
 }
@@ -39,7 +45,7 @@ Vector Vector::subtractFrom(const Vector &other) const
 float Vector::getMagnitude(void) const
 {
 	//get the length of the vector
-	float result;
+	float result = sqrt(x * x + y * y + z * z);
 	//your code here
 	return result;
 }
@@ -47,13 +53,16 @@ float Vector::getMagnitude(void) const
 void Vector::setMagnitude(const float m)
 {
 	//set the length of the vector
-	//your code here
+	normalise();
+	x *= m;
+	y *= m;
+	z *= m;
 }
 	
 float Vector::getDotProduct(const Vector &other) const
 {
 	//return the dot product between this vector and other
-	float result;
+	float result = x * other.x + y * other.y + z * other.z;
 	//your code here
 	return result;
 }
@@ -63,6 +72,9 @@ Vector Vector::getCrossProduct(const Vector &other) const
 	//return the cross product between this vector and other
 	Vector result;
 	//your code here
+	result.x = y*other.z - z*other.y;
+	result.y = z*other.x - x*other.z;
+	result.z = x*other.y - y*other.x;
 	return result;
 }
 
@@ -70,5 +82,9 @@ void Vector::normalise(void)
 {
 	//normalise this vector (set its length to 1)
 	//your code here
+	float length = getMagnitude();
+	x /= length;
+	y /= length;
+	z /= length;
 }
 
